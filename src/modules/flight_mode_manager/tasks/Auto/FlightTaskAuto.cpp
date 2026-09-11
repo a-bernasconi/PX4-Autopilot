@@ -200,10 +200,16 @@ bool FlightTaskAuto::update()
 		waypoints[0] = _position;
 	}
 
+	// Velocity the navigator allows when leaving the next waypoint, so the planner does not have to assume a stop there
+	Vector3f velocity_after_next = _next_velocity_constraint;
+
 	if (isTargetModified()) {
 		// In case the target has been modified, we take this as the next waypoints
 		waypoints[2] = _position_setpoint;
+		velocity_after_next.setNaN();
 	}
+
+	_position_smoothing.setNextVelocityConstraint(velocity_after_next, _next_acceptance_radius);
 
 	const bool should_wait_for_yaw_align = _param_mpc_yaw_mode.get() == int32_t(yaw_mode::towards_waypoint_yaw_first)
 					       && !_yaw_sp_aligned;
@@ -412,6 +418,7 @@ bool FlightTaskAuto::_evaluatePositionSetpointTriplet()
 	if (!position_setpoint_triplet.current.valid || !PX4_ISFINITE(position_setpoint_triplet.current.alt)) {
 		// Best we can do is to just set all waypoints to current state
 		_triplet_previous = _triplet_current = _triplet_next = _position;
+		_next_velocity_constraint.setNaN();
 		_type = WaypointType::loiter;
 		_yaw_setpoint = _yaw;
 		_yawspeed_setpoint = NAN;
@@ -500,6 +507,10 @@ bool FlightTaskAuto::_evaluatePositionSetpointTriplet()
 
 		_prev_was_valid = position_setpoint_triplet.previous.valid;
 
+		// Without a usable next waypoint the constraint is meaningless, unknown makes the planner assume a stop
+		_next_velocity_constraint.setNaN();
+		_next_acceptance_radius = _target_acceptance_radius;
+
 		if (_type == WaypointType::loiter) {
 			_triplet_next = _triplet_current;
 
@@ -507,6 +518,9 @@ bool FlightTaskAuto::_evaluatePositionSetpointTriplet()
 			_reference_position.project(position_setpoint_triplet.next.lat,
 						    position_setpoint_triplet.next.lon, _triplet_next(0), _triplet_next(1));
 			_triplet_next(2) = -(position_setpoint_triplet.next.alt - _reference_altitude);
+			// NED direction, no projection needed
+			_next_velocity_constraint = Vector3f(position_setpoint_triplet.next.velocity_constraint);
+			_next_acceptance_radius = position_setpoint_triplet.next.acceptance_radius;
 
 		} else {
 			_triplet_next = _triplet_current;
