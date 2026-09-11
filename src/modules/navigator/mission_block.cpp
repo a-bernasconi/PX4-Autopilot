@@ -641,6 +641,9 @@ MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, posi
 	// we override it after this
 	sp->alt_acceptance_radius = NAN;
 
+	// unknown until the mode fills it for the next setpoint, a stop at the setpoint is assumed
+	matrix::Vector3f(NAN, NAN, NAN).copyTo(sp->velocity_constraint);
+
 	sp->cruising_speed = _navigator->get_cruising_speed();
 	sp->cruising_throttle = _navigator->get_cruising_throttle();
 

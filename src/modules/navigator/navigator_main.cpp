@@ -1395,6 +1395,7 @@ void Navigator::reset_position_setpoint(position_setpoint_s &sp)
 	sp.course = NAN;
 	sp.loiter_radius = get_default_loiter_rad();
 	sp.acceptance_radius = get_default_acceptance_radius();
+	matrix::Vector3f(NAN, NAN, NAN).copyTo(sp.velocity_constraint);
 	sp.cruising_speed = get_cruising_speed();
 	sp.cruising_throttle = get_cruising_throttle();
 	sp.valid = false;
